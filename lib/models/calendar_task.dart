@@ -1,6 +1,13 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-/// Google カレンダー連携前の MVP 用タスク。後から `eventId` 等を追加可能。
+enum TaskSourceType { manual, googleCalendar }
+
+/// スケジュール表示 + Firestore保存の共通タスクモデル。
+/// start/end は端末ローカル時刻で保持し、Firestore保存時にUTC変換する。
+///
+/// isTodo=true のときはカレンダー非表示の「ToDo（Eisenhower Matrix）」項目として扱い、
+/// start/end は null となる。isTodo=false のときはカレンダー予定として扱い start/end は非 null。
 @immutable
 class CalendarTask {
   const CalendarTask({
@@ -9,11 +16,133 @@ class CalendarTask {
     required this.start,
     required this.end,
     required this.rewardYen,
+    this.externalCalendarId,
+    this.sourceType = TaskSourceType.manual,
+    this.isAllDay = false,
+    this.isCompleted = false,
+    this.updatedAt,
+    this.isTodo = false,
+    this.urgency = true,
+    this.importance = true,
+    this.orderIndex = 0,
+    this.note,
+    this.estimatedMinutes,
   });
 
   final String id;
   final String title;
-  final DateTime start;
-  final DateTime end;
+
+  /// 端末ローカル時刻（isTodo=true なら null）
+  final DateTime? start;
+
+  /// 端末ローカル時刻（isTodo=true なら null）
+  final DateTime? end;
   final int rewardYen;
+
+  /// 重複判定キー: `calendarId:eventId`
+  final String? externalCalendarId;
+  final TaskSourceType sourceType;
+  final bool isAllDay;
+  final bool isCompleted;
+  final DateTime? updatedAt;
+
+  /// true のとき ToDo マトリクス側に表示。false のときカレンダー側。
+  final bool isTodo;
+
+  /// 緊急（true=上段）
+  final bool urgency;
+
+  /// 重要（true=右列）
+  final bool importance;
+
+  /// 同一象限内での並び順。小さいほど上。
+  final int orderIndex;
+
+  /// メモ。詳細シートで編集。
+  final String? note;
+
+  /// 予想所要時間（分）
+  final int? estimatedMinutes;
+
+  CalendarTask copyWith({
+    String? title,
+    DateTime? start,
+    DateTime? end,
+    int? rewardYen,
+    String? externalCalendarId,
+    TaskSourceType? sourceType,
+    bool? isAllDay,
+    bool? isCompleted,
+    DateTime? updatedAt,
+    bool? isTodo,
+    bool? urgency,
+    bool? importance,
+    int? orderIndex,
+    String? note,
+    int? estimatedMinutes,
+  }) {
+    return CalendarTask(
+      id: id,
+      title: title ?? this.title,
+      start: start ?? this.start,
+      end: end ?? this.end,
+      rewardYen: rewardYen ?? this.rewardYen,
+      externalCalendarId: externalCalendarId ?? this.externalCalendarId,
+      sourceType: sourceType ?? this.sourceType,
+      isAllDay: isAllDay ?? this.isAllDay,
+      isCompleted: isCompleted ?? this.isCompleted,
+      updatedAt: updatedAt ?? this.updatedAt,
+      isTodo: isTodo ?? this.isTodo,
+      urgency: urgency ?? this.urgency,
+      importance: importance ?? this.importance,
+      orderIndex: orderIndex ?? this.orderIndex,
+      note: note ?? this.note,
+      estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      if (start != null) 'startAtUtc': Timestamp.fromDate(start!.toUtc()),
+      if (end != null) 'endAtUtc': Timestamp.fromDate(end!.toUtc()),
+      'reward': rewardYen,
+      if (externalCalendarId != null) 'externalCalendarId': externalCalendarId,
+      'sourceType': sourceType.name,
+      'isAllDay': isAllDay,
+      'isCompleted': isCompleted,
+      'isTodo': isTodo,
+      'urgency': urgency,
+      'importance': importance,
+      'orderIndex': orderIndex,
+      if (note != null) 'note': note,
+      if (estimatedMinutes != null) 'estimatedMinutes': estimatedMinutes,
+    };
+  }
+
+  factory CalendarTask.fromMap(String id, Map<String, dynamic> data) {
+    final startTs = data['startAtUtc'] as Timestamp?;
+    final endTs = data['endAtUtc'] as Timestamp?;
+    return CalendarTask(
+      id: id,
+      title: data['title'] as String? ?? '',
+      start: startTs?.toDate().toLocal(),
+      end: endTs?.toDate().toLocal(),
+      rewardYen: (data['reward'] as num?)?.toInt() ?? 0,
+      externalCalendarId: data['externalCalendarId'] as String?,
+      sourceType: TaskSourceType.values.firstWhere(
+        (e) => e.name == (data['sourceType'] as String?),
+        orElse: () => TaskSourceType.manual,
+      ),
+      isAllDay: data['isAllDay'] as bool? ?? false,
+      isCompleted: data['isCompleted'] as bool? ?? false,
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
+      isTodo: data['isTodo'] as bool? ?? false,
+      urgency: data['urgency'] as bool? ?? true,
+      importance: data['importance'] as bool? ?? true,
+      orderIndex: (data['orderIndex'] as num?)?.toInt() ?? 0,
+      note: data['note'] as String?,
+      estimatedMinutes: (data['estimatedMinutes'] as num?)?.toInt(),
+    );
+  }
 }

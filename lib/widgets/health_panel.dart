@@ -3,60 +3,57 @@ import 'package:task_manager/models/health_scores.dart';
 import 'package:task_manager/widgets/segmented_progress_bar.dart';
 
 class HealthPanel extends StatelessWidget {
-  const HealthPanel({super.key, required this.scores});
+  const HealthPanel({super.key, required this.scores, this.onTap});
 
   final HealthScores scores;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final content = Padding(
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('健康管理', style: text.labelMedium?.copyWith(color: Theme.of(context).colorScheme.primary)),
+          const SizedBox(height: 6),
+          _row(context, '食事', scores.meal),
+          _row(context, '睡眠', scores.sleep),
+          _row(context, '運動', scores.exercise),
+          _row(context, '瞑想', scores.meditation),
+          const Divider(height: 10),
+          _totalRow(context, scores.total),
+        ],
+      ),
+    );
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('健康管理', style: text.labelMedium?.copyWith(color: Theme.of(context).colorScheme.primary)),
-            const SizedBox(height: 6),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _row(context, '食事', scores.meal),
-                    _row(context, '睡眠', scores.sleep),
-                    _row(context, '運動', scores.exercise),
-                    _row(context, '瞑想', scores.meditation),
-                    const Divider(height: 12),
-                    _totalRow(context, scores.total),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      child: onTap == null ? content : InkWell(onTap: onTap, child: content),
     );
   }
 
+  static const _icons = {
+    '食事': Icons.restaurant,
+    '睡眠': Icons.bedtime,
+    '運動': Icons.directions_run,
+    '瞑想': Icons.self_improvement,
+  };
+
   Widget _row(BuildContext context, String label, int score) {
     final text = Theme.of(context).textTheme;
+    final color = Theme.of(context).colorScheme.primary;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(child: Text(label, style: text.bodySmall)),
-              Text('$score', style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(width: 8),
-            ],
-          ),
-          const SizedBox(height: 4),
-          SegmentedProgressBar(score: score),
+          Icon(_icons[label], size: 16, color: color),
+          const SizedBox(width: 4),
+          Expanded(child: SegmentedProgressBar(score: score)),
+          const SizedBox(width: 4),
+          Text('$score', style: text.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -64,19 +61,19 @@ class HealthPanel extends StatelessWidget {
 
   Widget _totalRow(BuildContext context, int total) {
     final text = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text('合計', style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
-            Text('$total', style: text.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(width: 8),
-          ],
-        ),
-        const SizedBox(height: 4),
-        TotalSegmentedProgressBar(totalScore: total),
-      ],
+    final color = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Icon(Icons.favorite, size: 16, color: color),
+          const SizedBox(width: 4),
+          Expanded(child: TotalSegmentedProgressBar(totalScore: total)),
+          const SizedBox(width: 4),
+          Text('$total/${HealthScores.maxTotal}',
+              style: text.labelSmall?.copyWith(fontWeight: FontWeight.w800)),
+        ],
+      ),
     );
   }
 }

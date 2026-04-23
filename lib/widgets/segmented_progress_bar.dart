@@ -47,7 +47,7 @@ class TotalSegmentedProgressBar extends StatelessWidget {
   const TotalSegmentedProgressBar({
     super.key,
     required this.totalScore,
-    this.maxTotal = 40,
+    this.maxTotal = 100,
     this.segments = 10,
     this.height = 8,
   });

@@ -1,4 +1,5 @@
-/// 食事・睡眠・運動・瞑想は 0〜10。合計は4項目の合算。
+/// 食事・睡眠・運動・瞑想は 0〜10。
+/// 合計は重み付けして100点満点（食事・睡眠 ×3、運動・瞑想 ×2）。
 class HealthScores {
   const HealthScores({
     required this.meal,
@@ -12,5 +13,7 @@ class HealthScores {
   final int exercise;
   final int meditation;
 
-  int get total => meal + sleep + exercise + meditation;
+  static const int maxTotal = 100;
+
+  int get total => meal * 3 + sleep * 3 + exercise * 2 + meditation * 2;
 }
